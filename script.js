@@ -14,12 +14,13 @@ class Task extends React.Component {
 
        return (
         <div className="row mb-1">
-            <p className="col">{content}</p>
-            <button 
+            <input className="d-inlike-block" type="checkbox" onChange={() => onComplete(id, completed)} checked={completed} />
+            <p className="col mt-2">{content}</p>
+            <button className="btn btn-warning"
             onClick={() => onDelete(id)}>
                 Delete
             </button>
-            <input className="d-inlike-block mt-2" type="checkbox" onChange={() => onComplete(id, completed)} checked={completed} />
+            
         </div>
        )
     }
@@ -31,12 +32,15 @@ class ToDoList extends React.Component {
         this.state = {
             new_task : '',
             tasks: [],
+            filter: 'all'
         };
 
         this.handleChange = this.handleChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
         this.fetchTasks = this.fetchTasks.bind(this);
         this.deleteTask = this.deleteTask.bind(this);
+        this.toggleComplete = this.toggleComplete.bind(this);
+        this.toggleFilter = this.toggleFilter.bind(this);
     }
 
     componentDidMount() {
@@ -89,11 +93,11 @@ class ToDoList extends React.Component {
     }
 
     deleteTask(id) {
-        if(!id) {
+        if (!id) {
             return; //if no id is supplied, early return
         }
 
-        fetch(`https://fewd-todolist-api.onrender.com/tasks/${id}api_key=1209`, {
+        fetch(`https://fewd-todolist-api.onrender.com/tasks/${id}?api_key=1209`, {
             method: "DELETE",
             mode: "cors",
         }).then(checkStatus)
@@ -107,24 +111,72 @@ class ToDoList extends React.Component {
         })
     }
 
+    toggleComplete(id, completed) {
+        if (!id) {
+            return; //if no id is supplied, early return
+        }
+
+        const newState = completed ? 'active' : 'complete';
+
+        fetch(`https://fewd-todolist-api.onrender.com/tasks/${id}/mark_${newState}?api_key=1209`, {
+            method: "PUT",
+            mode: "cors",
+        }).then(checkStatus)
+        .then(json)
+        .then((data) => {
+            this.fetchTasks(); //fetch tasks after delete
+        })
+        .catch((error) => {
+            this.setState({error: error.message});
+            console.log(error);
+        })
+    }
+
+    toggleFilter(e) {
+        console.log(e.target.name);
+        this.setState({
+            filter: e.target.name
+        })
+    }
+
     render() {
-        const {new_task, tasks} = this.state;
+        const {new_task, tasks, filter} = this.state;
+        const textDecoration = filter.completed ? 'line-through' : 'none';
 
         return (
             <div className="container">
                 <div className="row">
                     <div className="col-12">
-                        <h2 className="mb-3">To Do List</h2>
-                        {tasks.length > 0 ? tasks.map((task) => {
-                            return <Task key={task.id} task={task} onDelete={this.deleteTask} />
+                        <h2 className="mb-3 mt-4 text-center">To Do List</h2>
+                        {tasks.length > 0 ? tasks.filter(task => {
+                            if (filter === 'all') {
+                                return true;
+                            } else if (filter === 'active') {
+                                return !task.completed;
+                            } else {
+                                return task.completed;
+                            }
+                        }).map((task) => {
+                            return <Task key={task.id} task={task} onDelete={this.deleteTask} onComplete={this.toggleComplete} />
                         }) : <p>No task here</p>}
+                        <div className="mt-3">
+                            <label>
+                                <input type="checkbox" name="all" checked={filter === "all"} onChange={this.toggleFilter} className="mr-2" /><b>All</b> 
+                            </label>
+                            <label>
+                                <input type="checkbox" name="active" checked={filter === "active"} onChange={this.toggleFilter} className="mr-2 ml-2" /><b>Active</b>
+                            </label>
+                            <label>
+                                <input type="checkbox" name="completed" checked={filter === "completed"} onChange={this.toggleFilter} className="mr-2 ml-2 completed" /><b>Completed</b>
+                            </label>
+                        </div>
                         <form onSubmit={this.handleSubmit} className="form-inline my-4">
                             <input type="text"
-                            className="form-control mr-sm-2 md-2"
+                            className="form-control mr-sm-2 md-2 mb-2"
                             placeholder="New task"
                             value={new_task}
                             onChange={this.handleChange} />
-                            <button type="submit" className="btn btn-primary mb-2">Submit</button>
+                            <button type="submit" className="btn btn-success mb-2">Submit</button>
                         </form>
                     </div>
                 </div>
